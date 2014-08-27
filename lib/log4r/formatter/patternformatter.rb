@@ -27,10 +27,13 @@ module Log4r
     # %x - Nested Diagnostic Context (NDC)<br>
     # %X - Mapped Diagnostic Context (MDC), syntax is "%X{key}"<br>
     # %% - Insert a %<br>
+    # %e - Time elapsed
+
     DirectiveTable = {
       "c" => 'event.name',
       "C" => 'event.fullname',
       "d" => 'format_date',
+      "e" => 'get_time_elapsed',
       "g" => 'Log4r::GDC.get()',
       "t" => '(event.tracer.nil? ? "no trace" : event.tracer[0])',
       "T" => '(event.tracer.nil? ? "no trace" : event.tracer[0].split(File::SEPARATOR)[-1])',
@@ -54,7 +57,7 @@ module Log4r
     # * $6 is the stuff after the directive or "" if not applicable
     # * $7 is the remainder
   
-    DirectiveRegexp = /([^%]*)((%-?\d*(\.\d+)?)([cCdgtTmhpMlxX%]))?(\{.+?\})?(.*)/
+    DirectiveRegexp = /([^%]*)((%-?\d*(\.\d+)?)([cCdegtTmhpMlxX%]))?(\{.+?\})?(.*)/
   
     # default date format
     ISO8601 = "%Y-%m-%d %H:%M:%S"
@@ -107,6 +110,7 @@ module Log4r
           end
         EOS
       end
+      module_eval 'def get_time_elapsed; @time ||= Time.now; t = ((Time.now - @time) * 1000).to_i;@time = Time.now;"#{t} ms"; end'
       # and now the main format method
       ebuff = "def pf.format(event)\n sprintf(\""
       _pattern = pf.pattern.dup
@@ -123,7 +127,7 @@ module Log4r
 
 	  # MDC matches, need to be able to handle String, Symbol or Number
 	  match6sub = /[\{\}\"]/
-	  mdcmatches = match[6].match(/\{(:?)(\d*)(.*)\}/)
+	  mdcmatches = match[6].match /\{(:?)(\d*)(.*)\}/
 
 	  if ( mdcmatches[1] == "" && mdcmatches[2] == "" )
 	    match6sub = /[\{\}]/ # don't remove surrounding "'s if String
